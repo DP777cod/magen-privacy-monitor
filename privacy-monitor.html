@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>מגן — מוניטור פרטיות</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@700;800&family=Heebo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════
+   RESET + BASE
+══════════════════════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{font-size:16px;-webkit-text-size-adjust:100%;}
+body{
+  background:#030508;
+  color:#e8eaf0;
+  font-family:'Heebo',sans-serif;
+  min-height:100vh;
+  min-height:-webkit-fill-available;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ══════════════════════════════════════
+   DESIGN TOKENS
+══════════════════════════════════════ */
+:root{
+  --bg:#030508;--bg2:#070b12;--panel:rgba(8,14,26,0.97);
+  --border:rgba(255,255,255,0.07);
+  --red:#ff2d55;--orange:#ff9f0a;--green:#30d158;
+  --blue:#0a84ff;--cyan:#64d2ff;--purple:#bf5af2;
+  --text:#e8eaf0;--muted:#3a4460;--muted2:#1a2035;
+  --topbar-h:56px;--tabs-h:44px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+/* ══════════════════════════════════════
+   TOPBAR
+══════════════════════════════════════ */
+.topbar{
+  position:fixed;top:0;left:0;right:0;
+  height:calc(var(--topbar-h) + var(--safe-top));
+  padding-top:var(--safe-top);
+  background:rgba(7,11,18,0.98);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding-left:14px;padding-right:14px;
+  gap:10px;z-index:200;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+}
+.logo{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.logo-icon{
+  width:30px;height:30px;border-radius:8px;
+  background:linear-gradient(135deg,var(--red),#ff6b35);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;box-shadow:0 0 12px rgba(255,45,85,0.4);
+}
+.logo-text{
+  font-family:'Syne',sans-serif;font-size:17px;font-weight:800;
+  background:linear-gradient(90deg,#fff,var(--red));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.topbar-stats{
+  display:flex;align-items:center;gap:0;
+  margin-right:auto;overflow:hidden;
+}
+.tstat{
+  text-align:center;padding:0 10px;
+  border-right:1px solid var(--border);
+  flex-shrink:0;
+}
+.tstat:last-child{border:none;}
+.tstat-n{
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;font-weight:700;display:block;line-height:1.2;
+}
+.tstat-l{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.live-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 6px var(--green);
+  animation:blink 1.2s step-end infinite;flex-shrink:0;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* ══════════════════════════════════════
+   TABS BAR
+══════════════════════════════════════ */
+.tabs-bar{
+  position:fixed;
+  top:calc(var(--topbar-h) + var(--safe-top));
+  left:0;right:0;
+  height:var(--tabs-h);
+  background:rgba(7,11,18,0.98);
+  border-bottom:1px solid var(--border);
+  display:flex;overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;z-index:190;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+}
+.tabs-bar::-webkit-scrollbar{display:none;}
+.tab-btn{
+  flex-shrink:0;
+  padding:0 14px;
+  height:var(--tabs-h);
+  font-size:12px;font-weight:600;
+  font-family:'Heebo',sans-serif;
+  color:var(--muted);
+  border:none;background:transparent;
+  cursor:pointer;white-space:nowrap;
+  border-bottom:2px solid transparent;
+  transition:all .2s;
+  display:flex;align-items:center;gap:5px;
+}
+.tab-btn.active{color:var(--cyan);border-bottom-color:var(--cyan);}
+.tab-btn:active{background:rgba(255,255,255,0.04);}
+
+/* ══════════════════════════════════════
+   PAGE CONTENT
+══════════════════════════════════════ */
+.page-wrap{
+  padding-top:calc(var(--topbar-h) + var(--tabs-h) + var(--safe-top));
+  padding-bottom:calc(16px + var(--safe-bottom));
+  min-height:100vh;
+}
+.tab-page{display:none;}
+.tab-page.active{display:block;}
+
+/* ══════════════════════════════════════
+   COMMON COMPONENTS
+══════════════════════════════════════ */
+.section{padding:12px;}
+.card{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;margin-bottom:12px;
+}
+.card-header{
+  padding:12px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:8px;
+}
+.card-title{
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+  color:#fff;display:flex;align-items:center;gap:6px;
+}
+.badge-live{
+  background:rgba(255,45,85,0.15);border:1px solid rgba(255,45,85,0.3);
+  color:var(--red);font-family:'JetBrains Mono',monospace;
+  font-size:8px;padding:2px 7px;border-radius:4px;font-weight:700;
+  letter-spacing:1px;animation:blink 1.2s step-end infinite;
+}
+
+/* Stats grid */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:8px;
+  padding:12px;
+}
+.scard{
+  background:rgba(0,0,0,0.3);border:1px solid var(--border);
+  border-radius:10px;padding:12px;position:relative;overflow:hidden;
+}
+.scard::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;
+  height:2px;background:var(--sc,var(--cyan));opacity:.6;
+}
+.scard-n{
+  font-family:'JetBrains Mono',monospace;
+  font-size:22px;font-weight:700;display:block;line-height:1;margin-bottom:3px;
+}
+.scard-l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+
+/* Buttons */
+.btn{
+  padding:8px 14px;border-radius:8px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.05);
+  color:var(--text);font-family:'Heebo',sans-serif;
+  font-size:12px;cursor:pointer;
+  transition:all .2s;white-space:nowrap;
+  -webkit-appearance:none;
+}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:rgba(10,132,255,0.15);border-color:rgba(10,132,255,0.3);color:var(--blue);}
+.btn-danger{border-color:rgba(255,45,85,0.3);color:var(--red);}
+.btn-sm{padding:5px 10px;font-size:11px;}
+
+/* Filter chips */
+.chips{
+  display:flex;gap:6px;padding:10px 14px;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+  border-bottom:1px solid var(--border);scrollbar-width:none;
+}
+.chips::-webkit-scrollbar{display:none;}
+.chip{
+  flex-shrink:0;padding:5px 12px;border-radius:20px;
+  font-size:11px;font-weight:600;cursor:pointer;
+  border:1px solid var(--border);background:transparent;
+  color:var(--muted);transition:all .2s;
+  font-family:'Heebo',sans-serif;-webkit-appearance:none;
+}
+.chip.active{background:rgba(10,132,255,0.15);border-color:rgba(10,132,255,0.3);color:var(--blue);}
+.chip.chip-red.active{background:rgba(255,45,85,0.15);border-color:rgba(255,45,85,0.3);color:var(--red);}
+
+/* ══════════════════════════════════════
+   FEED
+══════════════════════════════════════ */
+.feed-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.feed-table{
+  width:100%;min-width:520px;
+  border-collapse:collapse;
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+}
+.feed-table th{
+  font-size:9px;text-transform:uppercase;letter-spacing:1px;
+  color:var(--muted);padding:8px 10px;
+  border-bottom:1px solid var(--border);
+  text-align:right;white-space:nowrap;
+  background:rgba(0,0,0,0.2);
+  position:sticky;top:0;
+}
+.feed-table td{
+  padding:8px 10px;
+  border-bottom:1px solid rgba(255,255,255,0.025);
+  white-space:nowrap;
+}
+.feed-table tr:active td{background:rgba(255,255,255,0.03);}
+.feed-table tr.susp{background:rgba(255,45,85,0.04);}
+.feed-table tr.susp td:first-child{border-right:2px solid var(--red);}
+.ft-time{color:var(--muted);font-size:10px;}
+.ft-app{color:var(--cyan);font-weight:600;max-width:90px;overflow:hidden;text-overflow:ellipsis;}
+.ft-dest{color:var(--text);opacity:.8;max-width:160px;overflow:hidden;text-overflow:ellipsis;}
+.ft-size{color:var(--muted);}
+.ft-proto{
+  padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;
+  display:inline-block;
+}
+.ft-proto.https{background:rgba(48,209,88,0.15);color:var(--green);}
+.ft-proto.http{background:rgba(255,159,10,0.15);color:var(--orange);}
+.ft-flag{font-size:10px;}
+.ft-flag.warn{color:var(--red);}
+.ft-flag.ok{color:var(--green);}
+.ft-flag.proxy{color:var(--purple);}
+.feed-anim{animation:fadeRow .3s ease;}
+@keyframes fadeRow{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
+
+/* Max height feed */
+.feed-scroll{max-height:340px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.feed-scroll::-webkit-scrollbar{width:3px;}
+.feed-scroll::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:2px;}
+
+/* Servers grid */
+.svr-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);
+  gap:8px;padding:12px;
+}
+.svr-card{
+  background:rgba(0,0,0,0.3);border:1px solid var(--border);
+  border-radius:10px;padding:10px;
+  position:relative;overflow:hidden;
+}
+.svr-card.flag{border-color:rgba(255,45,85,0.3);}
+.svr-card.flag::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--red);
+}
+.svr-co{font-size:11px;font-weight:700;color:#fff;margin-bottom:2px;}
+.svr-dm{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;}
+.svr-n{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;display:block;}
+.svr-l{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+
+/* App list */
+.app-list{padding:6px 12px;}
+.app-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px;border-radius:10px;
+  cursor:pointer;border:1px solid transparent;
+  margin-bottom:4px;transition:all .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.app-row:active{background:rgba(255,255,255,0.04);}
+.app-row.high{background:rgba(255,45,85,0.06);border-color:rgba(255,45,85,0.15);}
+.app-row.selected{background:rgba(10,132,255,0.08);border-color:rgba(10,132,255,0.2);}
+.app-ic{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.app-info{flex:1;min-width:0;}
+.app-nm{font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.app-by{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:1px;}
+.rdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.rdot.h{background:var(--red);box-shadow:0 0 5px var(--red);}
+.rdot.m{background:var(--orange);}
+.rdot.l{background:var(--green);}
+
+/* Detail panel */
+.detail-panel{padding:12px;}
+.det-head{
+  text-align:center;padding:16px;
+  background:rgba(0,0,0,0.2);
+  border:1px solid var(--border);border-radius:12px;margin-bottom:10px;
+}
+.det-icon{font-size:36px;margin-bottom:6px;}
+.det-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#fff;margin-bottom:3px;}
+.det-bundle{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);}
+.score-wrap{text-align:center;padding:12px 0;}
+.score-ring{position:relative;width:90px;height:90px;margin:0 auto 6px;}
+.score-ring svg{transform:rotate(-90deg);}
+.score-n{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700;
+}
+.score-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.dsec{background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;}
+.dsec-t{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;}
+.drow{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px;gap:8px;}
+.dkey{font-size:12px;color:var(--muted);flex-shrink:0;}
+.dval{font-family:'JetBrains Mono',monospace;font-size:11px;color:#fff;text-align:left;}
+.alert-it{
+  display:flex;gap:8px;padding:8px 10px;border-radius:8px;margin-bottom:5px;
+  background:rgba(255,45,85,0.06);border:1px solid rgba(255,45,85,0.15);
+  font-size:11px;line-height:1.5;color:rgba(255,200,200,.9);
+}
+.ptag{display:inline-flex;align-items:center;padding:3px 8px;border-radius:4px;font-size:10px;margin:2px;}
+.ptag-d{background:rgba(255,45,85,.12);border:1px solid rgba(255,45,85,.2);color:#ff9099;}
+.ptag-w{background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.2);color:#ffd080;}
+.mini-chart{display:flex;align-items:flex-end;gap:2px;height:36px;margin-top:4px;}
+.mbar{flex:1;border-radius:2px 2px 0 0;min-height:2px;}
+
+/* ══════════════════════════════════════
+   MAP
+══════════════════════════════════════ */
+.map-wrap{padding:12px;}
+#mapCanvas{
+  display:block;width:100%;
+  border-radius:12px;
+  border:1px solid var(--border);
+}
+.map-legend{
+  display:flex;flex-wrap:wrap;gap:10px;
+  padding:10px 14px;background:rgba(0,0,0,.2);
+  border:1px solid var(--border);border-radius:10px;margin-top:10px;
+}
+.leg-it{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+.leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+/* ══════════════════════════════════════
+   HOPS
+══════════════════════════════════════ */
+.hops-wrap{padding:12px;}
+.target-sel{
+  width:100%;background:var(--bg2);border:1px solid var(--border);
+  color:var(--text);padding:10px 12px;border-radius:8px;
+  font-size:13px;font-family:'Heebo',sans-serif;
+  -webkit-appearance:none;margin-bottom:10px;
+}
+.chain-alert{
+  display:none;padding:12px;background:rgba(255,45,85,.07);
+  border:1px solid rgba(255,45,85,.25);border-radius:10px;
+  font-size:12px;color:rgba(255,180,180,.9);margin-bottom:10px;gap:10px;
+}
+.chain-alert.show{display:flex;}
+.hop-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.hop-tbl{width:100%;min-width:480px;border-collapse:collapse;font-size:11px;}
+.hop-tbl th{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  text-transform:uppercase;letter-spacing:1px;color:var(--muted);
+  padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;
+  background:rgba(0,0,0,.2);white-space:nowrap;
+}
+.hop-tbl td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.025);white-space:nowrap;}
+.hop-tbl tr:active td{background:rgba(255,255,255,.02);}
+.hnum{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;}
+.hip{font-family:'JetBrains Mono',monospace;font-weight:600;}
+.hhost{color:var(--text);opacity:.8;font-size:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;display:block;}
+.hloc{color:var(--muted);font-size:10px;}
+.hms{font-family:'JetBrains Mono',monospace;color:var(--green);font-size:11px;}
+.hos{font-size:10px;}
+.pbadge{
+  display:inline-block;padding:2px 8px;border-radius:4px;
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+}
+.pb-yes{background:rgba(255,45,85,.15);color:var(--red);border:1px solid rgba(255,45,85,.3);}
+.pb-no{background:rgba(48,209,88,.1);color:var(--green);border:1px solid rgba(48,209,88,.2);}
+.pb-tor{background:rgba(191,90,242,.15);color:var(--purple);border:1px solid rgba(191,90,242,.3);}
+.hop-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px;}
+
+/* ══════════════════════════════════════
+   OS / VM
+══════════════════════════════════════ */
+.os-wrap{padding:12px;}
+.os-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;}
+.os-card{
+  background:rgba(0,0,0,.25);border:1px solid var(--border);
+  border-radius:12px;padding:12px;
+}
+.os-card.kali{border-color:rgba(255,45,85,.3);background:rgba(255,45,85,.04);}
+.os-card.ubuntu{border-color:rgba(255,159,10,.3);background:rgba(255,159,10,.04);}
+.os-card.vm{border-color:rgba(191,90,242,.3);background:rgba(191,90,242,.04);}
+.os-card.clean{border-color:rgba(48,209,88,.2);}
+.os-logo{font-size:26px;margin-bottom:6px;}
+.os-nm{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#fff;margin-bottom:2px;}
+.os-dm{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:6px;}
+.os-sig{font-size:10px;color:var(--muted);line-height:1.6;}
+.os-cf{
+  display:inline-block;margin-top:8px;padding:3px 10px;
+  border-radius:4px;font-family:'JetBrains Mono',monospace;
+  font-size:10px;font-weight:700;
+}
+.cf-h{background:rgba(255,45,85,.15);color:var(--red);}
+.cf-m{background:rgba(255,159,10,.15);color:var(--orange);}
+.cf-l{background:rgba(48,209,88,.1);color:var(--green);}
+.signs-grid{display:grid;grid-template-columns:1fr;gap:8px;}
+.sign-card{
+  background:rgba(0,0,0,.2);border:1px solid var(--border);
+  border-radius:10px;padding:12px;
+}
+.sign-t{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--cyan);text-transform:uppercase;letter-spacing:1px;
+  margin-bottom:8px;
+}
+.sign-list{font-size:11px;color:var(--muted);line-height:1.9;}
+
+/* ══════════════════════════════════════
+   PORTS
+══════════════════════════════════════ */
+.ports-wrap{padding:12px;}
+.port-cards{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.port-card{
+  background:rgba(0,0,0,.25);border:1px solid var(--border);
+  border-radius:12px;padding:12px;
+}
+.port-card.crit{border-color:rgba(255,45,85,.3);background:rgba(255,45,85,.04);}
+.port-card.high{border-color:rgba(255,159,10,.25);background:rgba(255,159,10,.03);}
+.port-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.port-left{display:flex;align-items:center;gap:10px;}
+.port-num{
+  font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;
+  color:var(--cyan);min-width:50px;
+}
+.port-svc{font-weight:700;font-size:13px;color:#fff;margin-bottom:2px;}
+.port-risk{
+  display:inline-block;padding:3px 10px;border-radius:4px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+}
+.pr-crit{background:rgba(255,45,85,.15);color:var(--red);border:1px solid rgba(255,45,85,.25);}
+.pr-high{background:rgba(255,159,10,.15);color:var(--orange);border:1px solid rgba(255,159,10,.25);}
+.pr-med{background:rgba(100,210,255,.1);color:var(--cyan);border:1px solid rgba(100,210,255,.2);}
+.port-what{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.port-why{font-size:11px;color:rgba(255,180,180,.8);line-height:1.5;}
+.block-btn{
+  padding:7px 14px;border-radius:8px;
+  background:rgba(255,45,85,.12);border:1px solid rgba(255,45,85,.25);
+  color:var(--red);font-size:11px;cursor:pointer;
+  font-family:'JetBrains Mono',monospace;font-weight:700;
+  transition:all .2s;-webkit-appearance:none;flex-shrink:0;
+  white-space:nowrap;
+}
+.block-btn:active{transform:scale(.95);}
+.block-btn.blocked{
+  background:rgba(48,209,88,.1);border-color:rgba(48,209,88,.2);
+  color:var(--green);
+}
+.blocked-box{
+  background:rgba(0,0,0,.3);border:1px solid var(--border);
+  border-radius:12px;padding:14px;
+}
+.blocked-box pre{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--green);line-height:2;overflow-x:auto;
+  white-space:pre;
+}
+
+/* ══════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+══════════════════════════════════════ */
+
+/* iPhone SE / small (320-374px) */
+@media (max-width:374px){
+  .os-grid{grid-template-columns:1fr;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+  .svr-grid{grid-template-columns:1fr 1fr;}
+  .scard-n{font-size:18px;}
+  .tab-btn{padding:0 10px;font-size:11px;}
+}
+
+/* iPhone 6/7/8, SE2 (375-413px) */
+@media (min-width:375px) and (max-width:413px){
+  .os-grid{grid-template-columns:1fr 1fr;}
+}
+
+/* iPhone 14 Pro Max, Plus (414px+) */
+@media (min-width:414px){
+  .scard-n{font-size:24px;}
+}
+
+/* Tablet — iPad mini+ (768px+) */
+@media (min-width:768px){
+  .stats-grid{grid-template-columns:repeat(4,1fr);}
+  .svr-grid{grid-template-columns:repeat(3,1fr);}
+  .os-grid{grid-template-columns:repeat(3,1fr);}
+  .signs-grid{grid-template-columns:repeat(2,1fr);}
+  .hop-stats{grid-template-columns:repeat(4,1fr);}
+}
+
+/* Desktop (1024px+) */
+@media (min-width:1024px){
+  .feed-table{min-width:unset;}
+  .hop-tbl{min-width:unset;}
+  .svr-grid{grid-template-columns:repeat(4,1fr);}
+  .os-grid{grid-template-columns:repeat(3,1fr);}
+}
+
+/* Samsung Galaxy (360px) */
+@media (max-width:360px){
+  :root{--topbar-h:52px;--tabs-h:42px;}
+  .logo-text{font-size:15px;}
+  .tstat{padding:0 7px;}
+  .tstat-n{font-size:12px;}
+  .tab-btn{padding:0 9px;font-size:11px;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">🛡</div>
+    <span class="logo-text">מגן</span>
+  </div>
+  <div class="topbar-stats">
+    <div class="tstat"><span class="tstat-n" id="tReqs" style="color:var(--cyan)">0</span><span class="tstat-l">בקשות</span></div>
+    <div class="tstat"><span class="tstat-n" id="tSusp" style="color:var(--red)">0</span><span class="tstat-l">חשודים</span></div>
+    <div class="tstat"><span class="tstat-n" id="tProxy" style="color:var(--purple)">0</span><span class="tstat-l">Proxy</span></div>
+  </div>
+  <div class="live-dot" style="margin-right:4px"></div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="gotoTab('feed',this)">📡 תעבורה</button>
+  <button class="tab-btn" onclick="gotoTab('apps',this)">📱 אפליקציות</button>
+  <button class="tab-btn" onclick="gotoTab('map',this)">🌍 מפה</button>
+  <button class="tab-btn" onclick="gotoTab('hops',this)">🔗 Hops</button>
+  <button class="tab-btn" onclick="gotoTab('os',this)">💻 OS/VM</button>
+  <button class="tab-btn" onclick="gotoTab('ports',this)">🔒 פורטים</button>
+</div>
+
+<div class="page-wrap">
+
+<!-- ══ FEED ══ -->
+<div id="tab-feed" class="tab-page active">
+  <div class="section">
+    <div class="stats-grid">
+      <div class="scard" style="--sc:var(--red)"><span class="scard-n" id="s1" style="color:var(--red)">0</span><span class="scard-l">שרתי Apple</span></div>
+      <div class="scard" style="--sc:var(--orange)"><span class="scard-n" id="s2" style="color:var(--orange)">0</span><span class="scard-l">צד שלישי</span></div>
+      <div class="scard" style="--sc:var(--purple)"><span class="scard-n" id="s3" style="color:var(--purple)">0</span><span class="scard-l">מוצפנים</span></div>
+      <div class="scard" style="--sc:var(--green)"><span class="scard-n" id="s4" style="color:var(--green)">0</span><span class="scard-l">MB נשלח</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📡 תעבורה חיה <span class="badge-live">LIVE</span></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-primary" onclick="toggleCapture()" id="capBtn">⏸</button>
+          <button class="btn btn-sm btn-danger" onclick="clearAll()">🗑</button>
+          <button class="btn btn-sm" onclick="exportLog()">⬇ CSV</button>
+        </div>
+      </div>
+      <div class="chips">
+        <button class="chip active" onclick="setFilter('all',this)">הכל</button>
+        <button class="chip chip-red" onclick="setFilter('susp',this)">⚠ חשודים</button>
+        <button class="chip" onclick="setFilter('apple',this)">🍎 Apple</button>
+        <button class="chip" onclick="setFilter('third',this)">🔗 צד שלישי</button>
+        <button class="chip" onclick="setFilter('proxy',this)">🔀 Proxy</button>
+      </div>
+      <div class="feed-scroll">
+        <div class="feed-wrap">
+          <table class="feed-table">
+            <thead><tr><th>שעה</th><th>אפליקציה</th><th>יעד</th><th>גודל</th><th>פרוטוקול</th><th>סטטוס</th></tr></thead>
+            <tbody id="feedBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">🌐 שרתים שזוהו</div></div>
+      <div class="svr-grid" id="serverGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APPS ══ -->
+<div id="tab-apps" class="tab-page">
+  <div class="section">
+    <div class="app-list" id="appList"></div>
+    <div class="detail-panel" id="detailPanel">
+      <div class="det-head">
+        <div class="det-icon" id="dIcon">🧠</div>
+        <div class="det-name" id="dName">Apple Intelligence</div>
+        <div class="det-bundle" id="dBundle">com.apple.intelligence</div>
+      </div>
+      <div class="score-wrap">
+        <div class="score-ring">
+          <svg width="90" height="90" viewBox="0 0 90 90">
+            <circle cx="45" cy="45" r="36" fill="none" stroke="#1a2035" stroke-width="7"/>
+            <circle id="scoreArc" cx="45" cy="45" r="36" fill="none" stroke="var(--red)" stroke-width="7" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="45"/>
+          </svg>
+          <div class="score-n" id="scoreN" style="color:var(--red)">82</div>
+        </div>
+        <div class="score-lbl">ציון סיכון פרטיות</div>
+      </div>
+      <div class="dsec">
+        <div class="dsec-t">פרטי חיבור</div>
+        <div class="drow"><span class="dkey">חיבורים</span><span class="dval" id="dConn">—</span></div>
+        <div class="drow"><span class="dkey">נשלח</span><span class="dval" id="dSent">—</span></div>
+        <div class="drow"><span class="dkey">שרת</span><span class="dval" id="dSvr">—</span></div>
+        <div class="drow"><span class="dkey">מיקום</span><span class="dval" id="dLoc">—</span></div>
+      </div>
+      <div class="dsec">
+        <div class="dsec-t">התראות</div>
+        <div id="dAlerts"></div>
+      </div>
+      <div class="dsec">
+        <div class="dsec-t">הרשאות</div>
+        <div id="dPerms"></div>
+      </div>
+      <div class="dsec">
+        <div class="dsec-t">פעילות 24h</div>
+        <div class="mini-chart" id="dChart"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAP ══ -->
+<div id="tab-map" class="tab-page">
+  <div class="map-wrap">
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-header"><div class="card-title">🌍 מפת תעבורה גלובלית</div></div>
+      <canvas id="mapCanvas"></canvas>
+    </div>
+    <div class="map-legend">
+      <div class="leg-it"><div class="leg-dot" style="background:var(--cyan)"></div>המכשיר שלך</div>
+      <div class="leg-it"><div class="leg-dot" style="background:var(--red)"></div>Apple / חשוד</div>
+      <div class="leg-it"><div class="leg-dot" style="background:var(--purple)"></div>Proxy / TOR</div>
+      <div class="leg-it"><div class="leg-dot" style="background:var(--green)"></div>CDN בטוח</div>
+      <div class="leg-it"><div class="leg-dot" style="background:var(--orange)"></div>צד שלישי</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HOPS ══ -->
+<div id="tab-hops" class="tab-page">
+  <div class="hops-wrap">
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-header"><div class="card-title">🔗 Traceroute — Hop Analysis</div></div>
+      <div style="padding:12px">
+        <select class="target-sel" id="hopTarget" onchange="renderHops()">
+          <option value="apple">icloud-content.com (Apple)</option>
+          <option value="facebook">graph.facebook.com</option>
+          <option value="proxy">שרת חשוד — Proxy chain</option>
+          <option value="tor">TOR Exit Node</option>
+        </select>
+        <div class="chain-alert" id="chainAlert">
+          <span style="font-size:18px;flex-shrink:0">⚠️</span>
+          <div><strong style="color:var(--red)">זוהתה שרשרת Proxy — 3+ צמתים!</strong><br>
+          <span style="font-size:11px;opacity:.8">תעבורה עוברת דרך מספר ביניים לסוות מקור.</span></div>
+        </div>
+        <div class="hop-scroll">
+          <table class="hop-tbl">
+            <thead><tr><th>#</th><th>IP</th><th>Host</th><th>מיקום</th><th>ms</th><th>OS</th><th>Proxy</th></tr></thead>
+            <tbody id="hopBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="hop-stats">
+      <div class="scard" style="--sc:var(--cyan)"><span class="scard-n" id="hTotal" style="color:var(--cyan)">0</span><span class="scard-l">צמתים</span></div>
+      <div class="scard" style="--sc:var(--red)"><span class="scard-n" id="hProxy" style="color:var(--red)">0</span><span class="scard-l">Proxy</span></div>
+      <div class="scard" style="--sc:var(--purple)"><span class="scard-n" id="hTor" style="color:var(--purple)">0</span><span class="scard-l">TOR</span></div>
+      <div class="scard" style="--sc:var(--green)"><span class="scard-n" id="hMs" style="color:var(--green)">0</span><span class="scard-l">ms סה"כ</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ OS/VM ══ -->
+<div id="tab-os" class="tab-page">
+  <div class="os-wrap">
+    <div class="os-grid" id="osGrid"></div>
+    <div class="signs-grid">
+      <div class="sign-card">
+        <div class="sign-t">🐉 Kali Linux</div>
+        <div class="sign-list">• TTL = 64 (Linux kernel)<br>• TCP window = 5840<br>• פורטים 22,4444,8080 פתוחים<br>• User-Agent חסר/מותאם<br>• nmap / Metasploit patterns<br>• תגובה מהירה לפורטים סגורים</div>
+      </div>
+      <div class="sign-card">
+        <div class="sign-t">🟠 Ubuntu Server</div>
+        <div class="sign-list">• TTL = 64, window = 29200<br>• Apache/Nginx headers גלויים<br>• X-Powered-By: Ubuntu<br>• SSH banner חושף גרסה<br>• snapd service ברקע<br>• פורטים 80,443,22 פתוחים</div>
+      </div>
+      <div class="sign-card">
+        <div class="sign-t">🖥 VM — VMware / VirtualBox</div>
+        <div class="sign-list">• MAC: 00:0C:29 (VMware OUI)<br>• MAC: 08:00:27 (VirtualBox OUI)<br>• TTL קבוע בדיוק 64<br>• ג'יטר latency &lt; 0.5ms<br>• CPUID hypervisor bit = 1<br>• IP טווח פרטי עם הפניה החוצה</div>
+      </div>
+      <div class="sign-card">
+        <div class="sign-t">🔀 Proxy / VPN / TOR</div>
+        <div class="sign-list">• 3+ hops שונים לאותו יעד<br>• X-Forwarded-For header<br>• Via: header בתגובה<br>• latency גבוה וקבוע (&gt;100ms)<br>• IP ב-ASN blacklist<br>• מדינות שונות ברצף</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PORTS ══ -->
+<div id="tab-ports" class="tab-page">
+  <div class="ports-wrap">
+    <div class="port-cards" id="portCards"></div>
+    <div class="blocked-box">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:8px">// firewall rules</div>
+      <pre id="blockedPre">// אין פורטים חסומים עדיין</pre>
+      <button class="btn btn-sm" style="margin-top:8px" onclick="copyRules()">📋 העתק כללים</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page-wrap -->
+
+<script>
+// ══════════════════════════════════════
+// DATA
+// ══════════════════════════════════════
+const APPS=[
+  {id:'ai',name:'Apple Intelligence',bundle:'com.apple.intelligence',icon:'🧠',risk:'high',
+   alerts:['שולח טביעת אצבע מכשיר לכל חיבור','מעביר היסטוריית שאילתות ל-iCloud','Private Relay מושבת בפועל'],
+   perms:['מיקרופון','מצלמה','אנשי קשר','מיקום 24/7'],server:'icloud-content.com',loc:'Cupertino, CA',score:82},
+  {id:'siri',name:'Siri',bundle:'com.apple.siri',icon:'🎤',risk:'high',
+   alerts:['מקליט 0.5s לפני "היי סירי"','שולח audio snippets לשרתי Apple'],
+   perms:['מיקרופון תמידי','מיקום','אנשי קשר'],server:'guzzoni.apple.com',loc:'USA/EU',score:78},
+  {id:'maps',name:'Maps',bundle:'com.apple.Maps',icon:'🗺',risk:'med',
+   alerts:['שומר היסטוריית נסיעות','מסנכרן מיקומים משמעותיים'],
+   perms:['מיקום מדויק','רקע'],server:'maps.apple.com',loc:'Cupertino',score:55},
+  {id:'photos',name:'Photos',bundle:'com.apple.Photos',icon:'📷',risk:'high',
+   alerts:['סורק פנים ומיקומים','מעלה metadata ל-iCloud'],
+   perms:['כל הספרייה','מיקום','רקע'],server:'p68-ckdatabase.icloud.com',loc:'Ireland',score:71},
+  {id:'health',name:'Health',bundle:'com.apple.Health',icon:'❤️',risk:'high',
+   alerts:['נתוני בריאות ל-HealthKit Cloud','מסנכרן עם שותפי מחקר'],
+   perms:['נתוני גוף','שינה','פעילות'],server:'health.apple.com',loc:'USA',score:88},
+  {id:'fb',name:'Facebook',bundle:'com.facebook.Facebook',icon:'👤',risk:'high',
+   alerts:['עוקב גם ללא שימוש','IDFA tracking','מפת חיבורים חברתיים'],
+   perms:['מיקרופון','מצלמה','אנשי קשר','מיקום'],server:'graph.facebook.com',loc:'Menlo Park',score:95},
+  {id:'safari',name:'Safari',bundle:'com.apple.mobilesafari',icon:'🌐',risk:'med',
+   alerts:['ITP שולח telemetry','מסנכרן tabs ל-iCloud'],
+   perms:['כל האתרים','היסטוריה'],server:'safebrowsing.apple.com',loc:'USA',score:48},
+  {id:'ga',name:'Google Analytics',bundle:'com.google.analytics',icon:'📊',risk:'med',
+   alerts:['SDK ב-200+ אפליקציות','cross-app tracking'],
+   perms:['IDFA','Device fingerprint'],server:'google-analytics.com',loc:'Mountain View',score:62},
+];
+
+const SERVERS=[
+  {co:'Apple iCloud',dm:'icloud.com',n:0,f:true,c:'var(--red)'},
+  {co:'Apple Telemetry',dm:'apple-cloudkit.com',n:0,f:true,c:'var(--red)'},
+  {co:'Apple Siri',dm:'guzzoni.apple.com',n:0,f:true,c:'var(--orange)'},
+  {co:'Facebook',dm:'graph.facebook.com',n:0,f:true,c:'var(--red)'},
+  {co:'Google',dm:'googleapis.com',n:0,f:false,c:'var(--blue)'},
+  {co:'Cloudflare',dm:'cloudflare.com',n:0,f:false,c:'var(--green)'},
+  {co:'Amazon AWS',dm:'amazonaws.com',n:0,f:false,c:'var(--orange)'},
+  {co:'Akamai',dm:'akamaihd.net',n:0,f:false,c:'var(--muted)'},
+];
+
+const DESTS=[
+  {d:'p68-ckdatabase.icloud.com',a:'Apple Intelligence',s:true,p:'HTTPS',prx:false},
+  {d:'guzzoni.apple.com',a:'Siri',s:true,p:'HTTPS',prx:false},
+  {d:'metrics.icloud.com',a:'iCloud',s:true,p:'HTTPS',prx:false},
+  {d:'graph.facebook.com',a:'Facebook',s:true,p:'HTTPS',prx:true},
+  {d:'api.apple-cloudkit.com',a:'Photos',s:true,p:'HTTPS',prx:false},
+  {d:'gateway.icloud.com',a:'Health',s:true,p:'HTTPS',prx:false},
+  {d:'safebrowsing.apple.com',a:'Safari',s:false,p:'HTTPS',prx:false},
+  {d:'maps.apple.com',a:'Maps',s:false,p:'HTTPS',prx:false},
+  {d:'analytics.google.com',a:'Google Analytics',s:false,p:'HTTPS',prx:false},
+  {d:'ocsp.apple.com',a:'iOS',s:false,p:'HTTP',prx:false},
+  {d:'185.220.101.47',a:'Unknown',s:true,p:'HTTPS',prx:true},
+  {d:'10.8.0.1→195.211.4.22',a:'Unknown',s:true,p:'HTTPS',prx:true},
+];
+
+const HOPS={
+  apple:[
+    {ip:'192.168.1.1',host:'router.local',loc:'ישראל',ms:1,os:'Cisco IOS',prx:false,t:'router'},
+    {ip:'87.69.16.1',host:'gw.bezeq.net',loc:'ישראל',ms:4,os:'Juniper',prx:false,t:'isp'},
+    {ip:'62.219.0.1',host:'edge.bezeq.net',loc:'ישראל',ms:8,os:'Juniper',prx:false,t:'isp'},
+    {ip:'89.138.0.1',host:'ix.he.net',loc:'Germany',ms:42,os:'Linux',prx:false,t:'ix'},
+    {ip:'17.57.144.1',host:'ae-1.r00.apple.com',loc:'Frankfurt',ms:55,os:'macOS Server',prx:false,t:'cdn'},
+    {ip:'17.57.144.50',host:'icloud-content.com',loc:'Cupertino',ms:110,os:'macOS Server',prx:false,t:'dest'},
+  ],
+  facebook:[
+    {ip:'192.168.1.1',host:'router.local',loc:'ישראל',ms:1,os:'Cisco IOS',prx:false,t:'router'},
+    {ip:'87.69.16.1',host:'gw.bezeq.net',loc:'ישראל',ms:4,os:'Juniper',prx:false,t:'isp'},
+    {ip:'31.13.80.1',host:'edge.facebook.com',loc:'Ireland',ms:60,os:'Linux (Ubuntu)',prx:false,t:'cdn'},
+    {ip:'157.240.200.35',host:'graph.facebook.com',loc:'Menlo Park',ms:145,os:'Linux (CentOS)',prx:false,t:'dest'},
+  ],
+  proxy:[
+    {ip:'192.168.1.1',host:'router.local',loc:'ישראל',ms:1,os:'Cisco IOS',prx:false,t:'router'},
+    {ip:'87.69.16.1',host:'gw.bezeq.net',loc:'ישראל',ms:4,os:'Juniper',prx:false,t:'isp'},
+    {ip:'45.76.120.8',host:'proxy1.unknown.net',loc:'Netherlands',ms:78,os:'Kali Linux',prx:true,t:'proxy'},
+    {ip:'103.224.182.247',host:'relay.vpn-service.xyz',loc:'Singapore',ms:145,os:'Ubuntu Server',prx:true,t:'proxy'},
+    {ip:'185.220.101.47',host:'tor-exit.suspicious.org',loc:'Romania',ms:220,os:'Debian',prx:true,t:'proxy'},
+    {ip:'91.108.4.200',host:'target.unknown',loc:'Russia',ms:280,os:'Unknown',prx:false,t:'dest'},
+  ],
+  tor:[
+    {ip:'192.168.1.1',host:'router.local',loc:'ישראל',ms:1,os:'Cisco IOS',prx:false,t:'router'},
+    {ip:'87.69.16.1',host:'gw.bezeq.net',loc:'ישראל',ms:4,os:'Juniper',prx:false,t:'isp'},
+    {ip:'176.10.104.243',host:'tor-guard.node1.net',loc:'Austria',ms:95,os:'Debian/TOR',prx:true,t:'tor'},
+    {ip:'51.15.43.212',host:'tor-middle.node2.xyz',loc:'France',ms:160,os:'Debian/TOR',prx:true,t:'tor'},
+    {ip:'185.220.103.7',host:'tor-exit.node3.org',loc:'Germany',ms:230,os:'Debian/TOR',prx:true,t:'tor'},
+    {ip:'***',host:'[hidden - TOR]',loc:'Unknown',ms:310,os:'Unknown',prx:false,t:'dest'},
+  ],
+};
+
+const OS_CARDS=[
+  {nm:'Kali Linux',dm:'45.76.120.8',icon:'🐉',cls:'kali',cf:'גבוה',cc:'cf-h',n:3,
+   sig:'TTL=64 · window=5840 · port 4444 · nmap patterns · User-Agent מותאם'},
+  {nm:'Ubuntu Server',dm:'103.224.182.247',icon:'🟠',cls:'ubuntu',cf:'גבוה',cc:'cf-h',n:7,
+   sig:'TTL=64 · window=29200 · Apache/2.4 · X-Powered-By:Ubuntu · SSH banner'},
+  {nm:'macOS Server',dm:'17.57.144.50',icon:'🍎',cls:'clean',cf:'ודאי',cc:'cf-l',n:24,
+   sig:'Darwin kernel · Apple ASN · AAAA records · TLS cert: apple.com'},
+  {nm:'VMware Guest',dm:'10.8.0.1',icon:'🖥',cls:'vm',cf:'בינוני',cc:'cf-m',n:2,
+   sig:'MAC: 00:0C:29 · TTL קבוע · jitter <0.5ms · CPUID hypervisor=1'},
+  {nm:'VirtualBox',dm:'192.168.56.1',icon:'📦',cls:'vm',cf:'בינוני',cc:'cf-m',n:1,
+   sig:'MAC: 08:00:27 · IP 192.168.56.x · Guest Additions service'},
+  {nm:'Juniper Router',dm:'87.69.16.1',icon:'📡',cls:'clean',cf:'ודאי',cc:'cf-l',n:12,
+   sig:'TTL=255 · ICMP type=11 · Junos fingerprint · BGP ASN ידוע'},
+];
+
+const PORTS=[
+  {port:22,svc:'SSH',risk:'high',rc:'pr-high',cc:'high',
+   what:'גישה מרחוק מוצפנת לשרת Linux/macOS',
+   why:'ניסיונות brute-force אוטומטיים. Kali משתמש לגישה לשרתים.'},
+  {port:23,svc:'Telnet',risk:'critical',rc:'pr-crit',cc:'crit',
+   what:'גישה מרחוק ישנה — לא מוצפנת',
+   why:'שולח סיסמאות בטקסט גלוי! חסום מיד.'},
+  {port:80,svc:'HTTP',risk:'med',rc:'pr-med',cc:'',
+   what:'תעבורת web לא מוצפנת',
+   why:'נתונים גלויים לכל מאזין. הפנה ל-443.'},
+  {port:443,svc:'HTTPS',risk:'med',rc:'pr-med',cc:'',
+   what:'תעבורת web מוצפנת — TLS',
+   why:'בטוח יחסית אך Apple/Facebook משתמשים לשליחת נתונים.'},
+  {port:4444,svc:'Metasploit',risk:'critical',rc:'pr-crit',cc:'crit',
+   what:'פורט ברירת מחדל של Metasploit reverse shell',
+   why:'אם תעבורה יוצאת בפורט זה — המכשיר נפרץ! חסום מיידית.'},
+  {port:1194,svc:'OpenVPN',risk:'high',rc:'pr-high',cc:'high',
+   what:'תעבורת VPN — יכולה לסוות כל תוכן',
+   why:'Proxy chains מנתבים דרך VPN לסוות מקור.'},
+  {port:9050,svc:'TOR SOCKS',risk:'critical',rc:'pr-crit',cc:'crit',
+   what:'פורט ברירת מחדל של TOR',
+   why:'מצביע על שימוש ב-TOR מהמכשיר.'},
+  {port:8080,svc:'HTTP Proxy',risk:'high',rc:'pr-high',cc:'high',
+   what:'שרת proxy נפוץ / פורט debug',
+   why:'Charles Proxy, Burp Suite, MITM attacks.'},
+  {port:5353,svc:'mDNS/Bonjour',risk:'med',rc:'pr-med',cc:'',
+   what:'Apple Bonjour — גילוי מכשירים ברשת',
+   why:'מאפשר מיפוי מכשירים. חסום בחיבורים ציבוריים.'},
+  {port:62078,svc:'iPhone Sync',risk:'high',rc:'pr-high',cc:'high',
+   what:'פורט sync של iTunes ל-iPhone',
+   why:'גישה לגיבויים ונתונים. חסום ברשתות ציבוריות.'},
+  {port:3389,svc:'RDP',risk:'critical',rc:'pr-crit',cc:'crit',
+   what:'Remote Desktop — Windows',
+   why:'אחד הפורטים הנסרקים ביותר. שליטה מלאה. חסום!'},
+  {port:6881,svc:'BitTorrent',risk:'med',rc:'pr-med',cc:'',
+   what:'פרוטוקול P2P לשיתוף קבצים',
+   why:'IP גלוי לכל ה-swarm. חסום ברשתות ציבוריות.'},
+];
+
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let rows=[],totalReqs=0,totalMB=0,suspCount=0,proxyCount=0;
+let s1=0,s2=0,s3=0;
+let capturing=true,activeFilter='all';
+let selApp=APPS[0];
+let interval=null;
+let blockedPorts=new Set();
+let mapRunning=false;
+
+function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function fmtB(b){if(b>1048576)return(b/1048576).toFixed(1)+' MB';if(b>1024)return(b/1024).toFixed(1)+' KB';return b+' B';}
+
+// ══════════════════════════════════════
+// TABS
+// ══════════════════════════════════════
+function gotoTab(name,el){
+  document.querySelectorAll('.tab-page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  el.classList.add('active');
+  if(name==='map'&&!mapRunning){setTimeout(startMap,80);}
+  if(name==='hops'){renderHops();}
+  if(name==='os'){renderOS();}
+  if(name==='ports'){renderPorts();}
+  if(name==='apps'){renderAppList();renderDetail();}
+  window.scrollTo(0,0);
+}
+
+// ══════════════════════════════════════
+// FEED
+// ══════════════════════════════════════
+function genRow(){
+  const dest=DESTS[rnd(0,DESTS.length-1)];
+  const now=new Date();
+  const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+  const sizes=['1KB','2KB','4KB','8KB','16KB','32KB','64KB','128KB'];
+  const sz=sizes[rnd(0,sizes.length-1)];
+  const bytes=parseInt(sz)*1024;
+  const row={time,app:dest.a,domain:dest.d,size:sz,proto:dest.p,susp:dest.s,proxy:dest.prx,bytes};
+  rows.push(row);
+  totalReqs++;totalMB+=bytes;
+  if(dest.s)suspCount++;
+  if(dest.prx)proxyCount++;
+  SERVERS.forEach(sv=>{
+    const base=sv.dm.split('.').slice(-2).join('.');
+    if(dest.d.includes(base))sv.n++;
+  });
+  if(dest.d.includes('apple')||dest.d.includes('icloud'))s1++;else s2++;
+  if(dest.p==='HTTPS')s3++;
+}
+
+function renderFeed(){
+  let data=rows;
+  if(activeFilter==='susp') data=rows.filter(r=>r.susp);
+  else if(activeFilter==='apple') data=rows.filter(r=>r.domain.includes('apple')||r.domain.includes('icloud'));
+  else if(activeFilter==='third') data=rows.filter(r=>!r.domain.includes('apple')&&!r.domain.includes('icloud'));
+  else if(activeFilter==='proxy') data=rows.filter(r=>r.proxy);
+
+  const tbody=document.getElementById('feedBody');
+  tbody.innerHTML=data.slice(-60).reverse().map(r=>`
+    <tr class="${r.susp?'susp':''} feed-anim">
+      <td class="ft-time">${r.time}</td>
+      <td class="ft-app">${r.app}</td>
+      <td class="ft-dest">${r.domain}</td>
+      <td class="ft-size">${r.size}</td>
+      <td><span class="ft-proto ${r.proto.toLowerCase()}">${r.proto}</span></td>
+      <td class="ft-flag ${r.proxy?'proxy':r.susp?'warn':'ok'}">${r.proxy?'🔀':r.susp?'⚠':'✓'}</td>
+    </tr>`).join('');
+}
+
+function updateStats(){
+  document.getElementById('tReqs').textContent=totalReqs;
+  document.getElementById('tSusp').textContent=suspCount;
+  document.getElementById('tProxy').textContent=proxyCount;
+  document.getElementById('s1').textContent=s1;
+  document.getElementById('s2').textContent=s2;
+  document.getElementById('s3').textContent=s3;
+  document.getElementById('s4').textContent=(totalMB/1048576).toFixed(1);
+}
+
+function renderServers(){
+  document.getElementById('serverGrid').innerHTML=SERVERS.map(sv=>`
+    <div class="svr-card ${sv.f?'flag':''}">
+      <div class="svr-co">${sv.co}</div>
+      <div class="svr-dm">${sv.dm}</div>
+      <span class="svr-n" style="color:${sv.c}">${sv.n}</span>
+      <span class="svr-l">חיבורים</span>
+    </div>`).join('');
+}
+
+function setFilter(f,btn){
+  activeFilter=f;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  renderFeed();
+}
+
+function toggleCapture(){
+  capturing=!capturing;
+  document.getElementById('capBtn').textContent=capturing?'⏸':'▶';
+  if(capturing)startLoop();else stopLoop();
+}
+
+function clearAll(){
+  rows=[];totalReqs=0;totalMB=0;suspCount=0;proxyCount=0;s1=0;s2=0;s3=0;
+  SERVERS.forEach(s=>s.n=0);
+  renderFeed();renderServers();updateStats();
+}
+
+function exportLog(){
+  const csv=['\uFEFFשעה,אפליקציה,יעד,גודל,פרוטוקול,חשוד,Proxy',
+    ...rows.map(r=>`${r.time},${r.app},${r.domain},${r.size},${r.proto},${r.susp?'כן':'לא'},${r.proxy?'כן':'לא'}`)
+  ].join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='magen-log.csv';a.click();
+}
+
+// ══════════════════════════════════════
+// APPS / DETAIL
+// ══════════════════════════════════════
+function renderAppList(){
+  const appB={};
+  rows.forEach(r=>{if(!appB[r.app])appB[r.app]=0;appB[r.app]+=r.bytes;});
+  document.getElementById('appList').innerHTML=APPS.map(a=>`
+    <div class="app-row ${a.risk==='high'?'high':''} ${selApp.id===a.id?'selected':''}" onclick="selAppFn('${a.id}')">
+      <div class="app-ic" style="background:${a.risk==='high'?'rgba(255,45,85,.15)':'rgba(255,159,10,.1)'}">${a.icon}</div>
+      <div class="app-info">
+        <div class="app-nm">${a.name}</div>
+        <div class="app-by">${fmtB(appB[a.name]||0)}</div>
+      </div>
+      <div class="rdot ${a.risk==='high'?'h':a.risk==='med'?'m':'l'}"></div>
+    </div>`).join('');
+}
+
+function selAppFn(id){
+  selApp=APPS.find(a=>a.id===id)||APPS[0];
+  renderAppList();renderDetail();
+  document.getElementById('detailPanel').scrollIntoView({behavior:'smooth'});
+}
+
+function renderDetail(){
+  const a=selApp;
+  document.getElementById('dIcon').textContent=a.icon;
+  document.getElementById('dName').textContent=a.name;
+  document.getElementById('dBundle').textContent=a.bundle;
+  const color=a.score>75?'var(--red)':a.score>50?'var(--orange)':'var(--green)';
+  const circ=2*Math.PI*36;
+  document.getElementById('scoreArc').setAttribute('stroke-dashoffset',circ-(a.score/100)*circ);
+  document.getElementById('scoreArc').setAttribute('stroke',color);
+  document.getElementById('scoreN').textContent=a.score;
+  document.getElementById('scoreN').style.color=color;
+  const ar=rows.filter(r=>r.app===a.name);
+  document.getElementById('dConn').textContent=ar.length;
+  document.getElementById('dSent').textContent=fmtB(ar.reduce((s,r)=>s+r.bytes,0));
+  document.getElementById('dSvr').textContent=a.server;
+  document.getElementById('dLoc').textContent=a.loc;
+  document.getElementById('dAlerts').innerHTML=a.alerts.map(al=>`<div class="alert-it"><span style="color:var(--red);flex-shrink:0">⚠</span>${al}</div>`).join('');
+  document.getElementById('dPerms').innerHTML=a.perms.map(p=>`<span class="ptag ${p.includes('מיקרופון')||p.includes('מצלמה')||p.includes('24/7')?'ptag-d':'ptag-w'}">${p}</span>`).join('');
+  const hours=Array.from({length:24},(_,i)=>Math.max(ar.filter(r=>r.time.startsWith(i.toString().padStart(2,'0'))).length,rnd(1,8)));
+  const mx=Math.max(...hours);
+  document.getElementById('dChart').innerHTML=hours.map((h,i)=>`<div class="mbar" style="height:${Math.round(h/mx*34)+2}px;background:${i===new Date().getHours()?color:'var(--muted2)'}"></div>`).join('');
+}
+
+// ══════════════════════════════════════
+// MAP
+// ══════════════════════════════════════
+const MNODES=[
+  {nm:'iPhone (IL)',x:.62,y:.40,c:'#64d2ff',r:8},
+  {nm:'Apple iCloud',x:.20,y:.28,c:'#ff2d55',r:7},
+  {nm:'Apple EU',x:.49,y:.26,c:'#ff2d55',r:6},
+  {nm:'Facebook',x:.19,y:.30,c:'#ff2d55',r:6},
+  {nm:'Google',x:.21,y:.27,c:'#0a84ff',r:5},
+  {nm:'Cloudflare',x:.47,y:.25,c:'#30d158',r:5},
+  {nm:'Proxy NL',x:.50,y:.24,c:'#bf5af2',r:6},
+  {nm:'Proxy SG',x:.78,y:.46,c:'#bf5af2',r:5},
+  {nm:'TOR RO',x:.53,y:.27,c:'#bf5af2',r:5},
+  {nm:'AWS IE',x:.44,y:.25,c:'#ff9f0a',r:5},
+];
+const MEDGES=[
+  {f:0,t:2,c:'rgba(255,45,85,0.5)',w:1.5,anim:true},
+  {f:0,t:1,c:'rgba(255,45,85,0.35)',w:1,anim:true},
+  {f:0,t:3,c:'rgba(255,45,85,0.4)',w:1.5,anim:true},
+  {f:0,t:4,c:'rgba(10,132,255,0.3)',w:1,anim:false},
+  {f:0,t:5,c:'rgba(48,209,88,0.3)',w:1,anim:false},
+  {f:0,t:6,c:'rgba(191,90,242,0.6)',w:2,anim:true},
+  {f:6,t:7,c:'rgba(191,90,242,0.5)',w:2,anim:true},
+  {f:7,t:8,c:'rgba(191,90,242,0.4)',w:1.5,anim:true},
+  {f:0,t:9,c:'rgba(255,159,10,0.3)',w:1,anim:false},
+];
+let mapT=0,mapRaf=null;
+function startMap(){
+  if(mapRunning)return;
+  mapRunning=true;
+  const canvas=document.getElementById('mapCanvas');
+  function resize(){
+    canvas.width=canvas.parentElement.clientWidth||320;
+    canvas.height=Math.round(canvas.width*0.55);
+  }
+  resize();
+  window.addEventListener('resize',resize);
+  const ctx=canvas.getContext('2d');
+  function frame(){
+    const W=canvas.width,H=canvas.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#070b12';ctx.fillRect(0,0,W,H);
+    // grid
+    ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=.5;
+    for(let x=0;x<W;x+=30){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=30){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    mapT=(mapT+1)%120;
+    // edges
+    MEDGES.forEach(e=>{
+      const a=MNODES[e.f],b=MNODES[e.t];
+      const ax=a.x*W,ay=a.y*H,bx=b.x*W,by=b.y*H;
+      const mx=(ax+bx)/2,my=Math.min(ay,by)-30;
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.quadraticCurveTo(mx,my,bx,by);
+      ctx.strokeStyle=e.c;ctx.lineWidth=e.w;
+      ctx.setLineDash(e.anim?[5,4]:[]);
+      ctx.lineDashOffset=e.anim?-mapT*2:0;
+      ctx.stroke();ctx.setLineDash([]);
+      if(e.anim){
+        const t2=mapT/120;
+        const dx=ax*(1-t2)*(1-t2)+mx*2*(1-t2)*t2+bx*t2*t2;
+        const dy=ay*(1-t2)*(1-t2)+my*2*(1-t2)*t2+by*t2*t2;
+        ctx.beginPath();ctx.arc(dx,dy,3,0,Math.PI*2);
+        ctx.fillStyle=e.c.replace(/[\d.]+\)$/,'0.9)');ctx.fill();
+      }
+    });
+    // nodes
+    MNODES.forEach(n=>{
+      const x=n.x*W,y=n.y*H;
+      const g=ctx.createRadialGradient(x,y,0,x,y,n.r*3);
+      g.addColorStop(0,n.c+'40');g.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(x,y,n.r*3,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+      ctx.beginPath();ctx.arc(x,y,n.r,0,Math.PI*2);
+      ctx.fillStyle=n.c;ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle='rgba(255,255,255,0.8)';
+      ctx.font=`bold ${Math.max(9,Math.round(W/55))}px Heebo`;
+      ctx.textAlign='center';
+      ctx.fillText(n.nm,x,y-n.r-3);
+    });
+    mapRaf=requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+// ══════════════════════════════════════
+// HOPS
+// ══════════════════════════════════════
+function renderHops(){
+  const key=document.getElementById('hopTarget').value;
+  const hops=HOPS[key];
+  const proxyCnt=hops.filter(h=>h.prx).length;
+  const torCnt=hops.filter(h=>h.t==='tor').length;
+  const isChain=proxyCnt>=3;
+  document.getElementById('chainAlert').className='chain-alert'+(isChain?' show':'');
+  document.getElementById('hTotal').textContent=hops.length;
+  document.getElementById('hProxy').textContent=proxyCnt;
+  document.getElementById('hTor').textContent=torCnt;
+  document.getElementById('hMs').textContent=hops[hops.length-1].ms;
+  const tColors={router:'var(--muted)',isp:'var(--blue)',cdn:'var(--green)',
+    ix:'var(--cyan)',proxy:'var(--red)',tor:'var(--purple)',dest:'var(--orange)'};
+  document.getElementById('hopBody').innerHTML=hops.map((h,i)=>`
+    <tr>
+      <td><span class="hnum">${i+1}</span></td>
+      <td><span class="hip" style="color:${tColors[h.t]||'var(--cyan)'}">${h.ip}</span></td>
+      <td><span class="hhost">${h.host}</span></td>
+      <td><span class="hloc">${h.loc}</span></td>
+      <td><span class="hms">${h.ms}</span></td>
+      <td><span class="hos" style="color:${h.os.includes('Kali')?'var(--red)':h.os.includes('Ubuntu')||h.os.includes('Debian')?'var(--orange)':h.os.includes('macOS')?'var(--cyan)':'var(--muted)'}">${h.os}</span></td>
+      <td><span class="pbadge ${h.t==='tor'?'pb-tor':h.prx?'pb-yes':'pb-no'}">${h.t==='tor'?'TOR':h.prx?'PROXY':'נקי'}</span></td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════
+// OS
+// ══════════════════════════════════════
+function renderOS(){
+  document.getElementById('osGrid').innerHTML=OS_CARDS.map(o=>`
+    <div class="os-card ${o.cls}">
+      <div class="os-logo">${o.icon}</div>
+      <div class="os-nm">${o.nm}</div>
+      <div class="os-dm">${o.dm}</div>
+      <div class="os-sig">${o.sig}</div>
+      <span class="os-cf ${o.cc}">${o.cf} (${o.n} סימנים)</span>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════
+// PORTS
+// ══════════════════════════════════════
+function renderPorts(){
+  document.getElementById('portCards').innerHTML=PORTS.map(p=>`
+    <div class="port-card ${p.cc}">
+      <div class="port-top">
+        <div class="port-left">
+          <div class="port-num">${p.port}</div>
+          <div>
+            <div class="port-svc">${p.svc}</div>
+            <span class="port-risk ${p.rc}">${p.risk==='critical'?'קריטי':p.risk==='high'?'גבוה':'בינוני'}</span>
+          </div>
+        </div>
+        <button class="block-btn ${blockedPorts.has(p.port)?'blocked':''}" onclick="toggleBlock(${p.port})">
+          ${blockedPorts.has(p.port)?'✓ חסום':'⊘ חסום'}
+        </button>
+      </div>
+      <div class="port-what">📌 ${p.what}</div>
+      <div class="port-why">⚠ ${p.why}</div>
+    </div>`).join('');
+  renderBlocked();
+}
+
+function toggleBlock(port){
+  if(blockedPorts.has(port))blockedPorts.delete(port);
+  else blockedPorts.add(port);
+  renderPorts();
+}
+
+function renderBlocked(){
+  const bl=PORTS.filter(p=>blockedPorts.has(p.port));
+  document.getElementById('blockedPre').textContent=
+    bl.length===0?'// אין פורטים חסומים עדיין':
+    bl.map(p=>`iptables -A OUTPUT -p tcp --dport ${p.port} -j DROP  # ${p.svc}`).join('\n');
+}
+
+function copyRules(){
+  const bl=PORTS.filter(p=>blockedPorts.has(p.port));
+  if(bl.length===0)return;
+  const txt=bl.map(p=>`iptables -A OUTPUT -p tcp --dport ${p.port} -j DROP  # ${p.svc}`).join('\n');
+  navigator.clipboard&&navigator.clipboard.writeText(txt).catch(()=>{});
+}
+
+// ══════════════════════════════════════
+// LOOP
+// ══════════════════════════════════════
+function startLoop(){
+  if(interval)clearInterval(interval);
+  interval=setInterval(()=>{
+    for(let i=0;i<rnd(1,3);i++)genRow();
+    renderFeed();renderServers();updateStats();
+    const active=document.getElementById('tab-apps').classList.contains('active');
+    if(active){renderAppList();renderDetail();}
+  },900);
+}
+function stopLoop(){clearInterval(interval);interval=null;}
+
+// INIT
+for(let i=0;i<40;i++)genRow();
+renderFeed();renderServers();updateStats();
+renderAppList();renderDetail();
+startLoop();
+</script>
+</body>
+</html>
